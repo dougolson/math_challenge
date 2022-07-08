@@ -1,4 +1,3 @@
-from ast import Raise
 import random
 import argparse
 import sys
@@ -142,36 +141,24 @@ class MathChallenge():
         4 - Division
         5 - Quit
         ''')
-        try: 
-            choice = self.validate_and_convert_string_int(choice)
-            if choice < 5:
-                print(f"{self.choice_confirmation[choice]} - great choice!")
-            if choice > 5:
-                print("Sorry - I didn't understand that")
-                self.setup('')
-        except:
-            print("Sorry - I didn't understand that")
+        choice = self.validate_and_convert_string_int(choice)
+        if choice is None:
             self.setup('')
-        if choice == 5:
+        if choice < 5:
+            print(f"{self.choice_confirmation[choice]} - great choice!")
+        elif choice == 5:
             self.quit_program()
-            return
-        # smallest_number = input("What's the smallest number you want to use?\n")
+        else:
+            print("Please choose a number between 1 and 5.")
+            self.setup('')
         smallest_number = 0
         while (smallest_number is None or smallest_number < 1):
             smallest_number = self.get_number("smallest")
-            print(f"smallest_number = {smallest_number}")
-        largest_number = smallest_number
-        while (largest_number is None or largest_number <= smallest_number):
+        largest_number = 0
+        while (largest_number <= smallest_number):
             largest_number = self.get_number("largest")
-        # try:
-        # except:
-        #     print("that doesn't seem to be a number!")
-        # largest_number = input("What's the largest number you want to use?\n")
-        # try:
-        #     largest_number =self.validate_and_convert_string_int(largest_number)
-        # except:
-        #     print("that doesn't seem to be a number!")
-
+            if largest_number <= smallest_number:
+                print(f"{self.get_condolence()}, largest number must be larger than the smallest number. Fancy that!")
         print(f"Great! Let's do some {self.choice_confirmation[choice]} problems with numbers between {smallest_number} and {largest_number}...")
         self.function_choice[choice](smallest_number, largest_number)
         return
