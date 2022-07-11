@@ -3,7 +3,6 @@ import argparse
 import sys
 import time
 import re
-import math
 
 class TimerError(Exception):
 
