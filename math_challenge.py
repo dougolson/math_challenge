@@ -5,6 +5,11 @@ import time
 import re
 import math
 
+class TimerError(Exception):
+
+    """A custom exception used to report errors in use of Timer class"""
+
+
 class MathChallenge():
     
     def __init__(self):
@@ -21,6 +26,26 @@ class MathChallenge():
         self.not_a_number_message = "I don't even know what that is!"
         self.prompt_new_question = "Try another? y/n\n"
         self.function_choice = {1: self.addition_problem, 2: self.subtraction_problem, 3: self.multiplication_problem, 4: self.division_problem, 5:self.quit_program}
+        self.problems_attempted = {1:0, 2:0, 3:0, 4:0}
+        self.problems_solved = {1:0, 2:0, 3:0, 4:0}
+        self.problem_time = {1:0, 2:0, 3:0, 4:0}
+        self.start_time = None
+    
+    def start_timer(self):
+        """Start a new timer"""
+        if self.start_time is not None:
+            raise TimerError(f"Timer is running. Use .stop() to stop it")
+        self.start_time = time.perf_counter()
+
+    def stop_timer(self):
+        """Stop the timer, and report the elapsed time"""
+        if self.start_time is None:
+            raise TimerError(f"Timer is not running. Use .start() to start it")
+        elapsed_time = time.perf_counter() - self.start_time
+        self.start_time = None
+        print(f"elapsed time: {elapsed_time}")
+        return elapsed_time
+
 
     def get_random_number(self, smallest, largest):
         """get a random intger between smallest and largest
@@ -117,13 +142,11 @@ class MathChallenge():
             string: an error message
         """        
         if re.match(self.less_than_two_pattern, string_int):
-            return f"{self.get_condolence()}, {self.less_than_two_message}"
+            return f"{self.less_than_two_message}"
         elif re.match(self.float_pattern, string_int):
-            return f"{self.get_condolence()}, {self.float_message}"
-        # elif string_int == '0':
-        #     return self.invalid_choice_message
+            return f"{self.float_message}"
         else:
-            return f"{self.get_condolence()}, {self.not_a_number_message}"
+            return f"{self.not_a_number_message}"
 
     def addition_problem(self, smallest, largest):
         """generate an addition problem with operands between smallest and largest
@@ -134,15 +157,19 @@ class MathChallenge():
         """        
         n1 = self.get_random_number(smallest, largest)
         n2 = self.get_random_number(smallest, largest)
+        self.start_timer()
         response = input(f"{n1} + {n2} = ?\n")
         result = self.convert_string_int(response)
         if result is not None:
             if result == n1 + n2:
                 print(f"{self.get_praise()}")
+                self.problems_solved[1] += 1
             else:
-                print(f"{self.get_condolence()}, {n1} + {n2} = {n1 + n2}!")    
+                print(f"{self.get_condolence()}, {n1} + {n2} = {n1 + n2}!")
         else:
-            print(f"{self.get_confused_response()}")        
+            print(f"{self.get_confused_response()}, {self.get_error_message(response)}")        
+        self.problem_time[1] += self.stop_timer()
+        self.problems_attempted[1] += 1   
         if input(self.prompt_new_question).strip().lower() == 'y':
             self.addition_problem(smallest, largest)
         else:
@@ -160,15 +187,19 @@ class MathChallenge():
         n2 = self.get_random_number(smallest, largest)
         if n1 < n2:
             n1, n2 = n2, n1
+        self.start_timer()
         response = input(f"{n1} - {n2} = ?\n")
         result = self.convert_string_int(response)
         if result is not None:
             if result == n1 - n2:
                 print(f"{self.get_praise()}")
+                self.problems_solved[2] += 1
             else:
                 print(f"{self.get_condolence()}, {n1} - {n2} = {n1 - n2}!")
         else:
-            print(f"{self.get_confused_response()}")
+            print(f"{self.get_confused_response()}, {self.get_error_message(response)}")
+        self.problem_time[2] += self.stop_timer()
+        self.problems_attempted[2] += 1  
         if input(self.prompt_new_question).strip().lower() == 'y':
             self.subtraction_problem(smallest, largest)
         else:
@@ -184,15 +215,19 @@ class MathChallenge():
         """ 
         n1 = self.get_random_number(smallest, largest)
         n2 = self.get_random_number(smallest, largest)
+        self.start_timer()
         response = input(f"{n1} x {n2} = ?\n")
         result = self.convert_string_int(response)
         if result is not None:
             if result == n1 * n2:
                 print(f"{self.get_praise()}")
+                self.problems_solved[3] += 1
             else:
                 print(f"{self.get_condolence()}, {n1} * {n2} = {n1 * n2}!")
         else:
-            print(f"{self.get_confused_response()}")
+            print(f"{self.get_confused_response()}, {self.get_error_message(response)}")
+        self.problem_time[3] += self.stop_timer()
+        self.problems_attempted[3] += 1  
         if input(self.prompt_new_question).strip().lower() == 'y':
             self.multiplication_problem(smallest, largest)
         else:
@@ -247,22 +282,60 @@ class MathChallenge():
         quotient_divisor_pairs = self.generate_quotient_divisor_pairs(divisor_list)
         quotient, divisor = random.choice(quotient_divisor_pairs)
         dividend = quotient * divisor
+        self.start_timer()
         response = input(f"{dividend} / {divisor} = ?\n")
         result = self.convert_string_int(response)
         if result is not None:
             if result == quotient:
                 print(f"{self.get_praise()}")
+                self.problems_solved[4] += 1
             else:
                 print(f"{self.get_condolence()}, {dividend} / {divisor} = {quotient}!")
         else:
-            print(f"{self.get_confused_response()}")
+            print(f"{self.get_confused_response()}, {self.get_error_message(response)}")
+        self.problem_time[4] += self.stop_timer()
+        self.problems_attempted[4] += 1  
         if input(self.prompt_new_question).strip().lower() == 'y':
             self.division_problem(smallest, largest)
         else:
             self.setup('')
             return   
+    def get_stats(self):
+        if sum([self.problems_attempted[x] for x in range(1, len(self.problems_attempted) + 1)]) > 0:
+            print("\n=========")
+            print("= STATS =")
+            print("=========")
+        if self.problems_attempted[1] > 0:
+            print("\nAddition:")
+            print("---------")
+            print(f"\tSolved: {self.problems_solved[1]}")
+            print(f"\tAttempted: {self.problems_attempted[1]}")
+            print(f"\tPercent solved: {round(100 * self.problems_solved[1] / self.problems_attempted[1])}%")
+            print(f"\tAverage time per problem: {round(self.problem_time[1] / self.problems_attempted[1], 2)} seconds")
+        if self.problems_attempted[2] > 0:
+            print(f"\nSubtraction:")
+            print("-------------")
+            print(f"\tSolved:\t{self.problems_solved[2]}")
+            print(f"\tAttempted:\t{self.problems_attempted[2]}")
+            print(f"\tPercent solved:\t{round(100 * self.problems_solved[2] / self.problems_attempted[2])}%")
+            print(f"\tAverage time per problem: {round(self.problem_time[2] / self.problems_attempted[2], 2)} seconds")
+        if self.problems_attempted[3] > 0:
+            print(f"\nMultiplication:")
+            print("----------------")
+            print(f"\tSolved:\t{self.problems_solved[3]}")
+            print(f"\tAttempted:\t{self.problems_attempted[3]}")
+            print(f"\tPercent solved:\t{round(100 * self.problems_solved[3] / self.problems_attempted[3])}%")
+            print(f"\tAverage time per problem: {round(self.problem_time[3] / self.problems_attempted[3], 2)} seconds")
+        if self.problems_attempted[4] > 0:
+            print(f"\nDivision:")
+            print("----------")
+            print(f"\tSolved:\t{self.problems_solved[4]}")
+            print(f"\tAttempted:\t{self.problems_attempted[4]}")
+            print(f"\tPercent solved:\t{round(100 * self.problems_solved[4] / self.problems_attempted[4])}%")
+            print(f"\tAverage time per problem: {round(self.problem_time[4] / self.problems_attempted[4], 2)} seconds")
 
     def quit_program(self):
+        self.get_stats()
         sys.exit("Goodbye!")
 
     def get_number(self, designation):
