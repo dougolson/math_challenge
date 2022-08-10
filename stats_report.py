@@ -198,7 +198,7 @@ class StatsAnalysis:
     
     def print_top_3_incorrect_by_time(self):
         if self.sorted_incorrect_by_time_spent is not None:
-            print("Here are the questions you spent the longest time trying to answer:")
+            print("\nHere are the questions you answered incorrectly and spent the longest time trying to answer:")
             count = 0
             while count < 3:
                 try:
@@ -213,7 +213,7 @@ class StatsAnalysis:
 
     def print_top_3_incorrect_by_attempts(self):
         if self.sorted_by_incorrect_attempts is not None:
-            print("Here are the questions you answered incorrectly most often:")
+            print("\nHere are the questions you answered incorrectly most often:")
             count = 0
             while count < 3:
                 try:

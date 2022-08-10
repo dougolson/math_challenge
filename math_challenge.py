@@ -11,6 +11,7 @@ from stat_save import StatRecord
 import user as usr
 from user import User
 from stats_report import StatsReportData, StatsAnalysis
+from create_database import reset_database
 
 class TimerError(Exception):
 
@@ -19,7 +20,8 @@ class TimerError(Exception):
 
 class MathChallenge():
 
-    def __init__(self):
+    def __init__(self, args):
+        self.args = args
         self.user:User = None
         self.first_run = True
         self.choice_confirmation = {1: "Addition", 2:"Subtraction", 3:"Multiplication", 4:"Division", 5:"Get Recommendation",6:"Quit"}
@@ -65,7 +67,7 @@ class MathChallenge():
         """get a random intger between smallest and largest"""        
         return random.randint(smallest, largest)
 
-    def print_intro_screen(self, user: User):
+    def show_intro_screen(self, user: User):
         """print out a banner"""   
         os.system('clear')
         name = user.user_name.title()     
@@ -105,11 +107,14 @@ class MathChallenge():
         return confusion[self.get_random_number(0, len(confusion) - 1)]
     
     def display_recommendations(self):
-        data = StatsReportData.get_by_user_id(4)
+        data = StatsReportData.get_by_user_id(self.user.id)
         summary = StatsAnalysis(data)
         os.system('clear')
-        summary.print_top_3_incorrect_by_time()
-        summary.print_top_3_incorrect_by_attempts()
+        if len(summary.data) == 0:
+            print("Sorry, there isn't enough data to provide any recommendations.")
+        else:
+            summary.print_top_3_incorrect_by_time()
+            summary.print_top_3_incorrect_by_attempts()
         input("Press any key to return to the main menu")
         self.setup()
 
@@ -179,16 +184,16 @@ class MathChallenge():
         self.start_timer()
         if operation == 'addition':
             response = input(f"{question.operand1} + {question.operand2} = ?\n\n")
-            incorrect_msg = f"{self.get_condolence()}, {question.operand1} + {question.operand2} = {question.answer}!"
+            incorrect_msg = f"{self.get_condolence()}, that is not the correct answer!" # {question.operand1} + {question.operand2} = {question.answer}!"
         elif operation == 'subtraction':
             response = input(f"{question.operand1} - {question.operand2} = ?\n")
-            incorrect_msg = f"{self.get_condolence()}, {question.operand1} - {question.operand2} = {question.answer}!"
+            incorrect_msg = f"{self.get_condolence()}, that is not the correct answer!" # {question.operand1} - {question.operand2} = {question.answer}!"
         elif operation == 'multiplication':
             response = input(f"{question.operand1} x {question.operand2} = ?\n")
-            incorrect_msg = f"{self.get_condolence()}, {question.operand1} * {question.operand2} = {question.answer}!"
+            incorrect_msg = f"{self.get_condolence()}, that is not the correct answer!" # {question.operand1} * {question.operand2} = {question.answer}!"
         elif operation == 'division':
             response = input(f"{question.operand1} / {question.operand2} = ?\n")
-            incorrect_msg = f"{self.get_condolence()}, {question.operand1} / {question.operand2} = {question.answer}!"
+            incorrect_msg = f"{self.get_condolence()}, that is not the correct answer!" # {question.operand1} / {question.operand2} = {question.answer}!"
         else:
             response = ''
         user_answer = self.convert_string_int(response)
@@ -203,14 +208,15 @@ class MathChallenge():
                 print(incorrect_msg)
                 self.problem_set.append(question)
                 random.shuffle(self.problem_set)
+            answer_time = self.stop_timer()
+            print(f"Time spent: {answer_time:.2f}")
+            self.answer_time_totals[operation] += answer_time
+            self.questions_attempted[operation] += 1 
+            stat_record = StatRecord(self.user.id, question.id, answer_time, user_answer, is_correct_ans, datetime.today().strftime('%Y-%m-%d'))
+            db_save.save_stats_to_db(stat_record)
         else:
+            self.stop_timer()
             print(f"{self.get_confused_response()}, {self.get_error_message(response)}") 
-        answer_time = self.stop_timer()
-        print(f"Time spent: {answer_time:.2f}")
-        self.answer_time_totals[operation] += answer_time
-        self.questions_attempted[operation] += 1 
-        stat_record = StatRecord(self.user.id, question.id, answer_time, user_answer, is_correct_ans, datetime.today().strftime('%Y-%m-%d'))
-        db_save.save_stats_to_db(stat_record)
         if input(self.prompt_new_question).strip().lower() == '':
             self.get_problem(operation, smallest, largest)
         else:
@@ -223,14 +229,16 @@ class MathChallenge():
             print("\n=========")
             print("= STATS =")
             print("=========")
-        for operation in self.operations:
-            if self.questions_attempted[operation] > 0:
-                print(f"\n{operation.title()}:")
-                print("---------")
-                print(f"\tSolved: {self.problems_solved[operation]}")
-                print(f"\tAttempted: {self.questions_attempted[operation]}")
-                print(f"\tPercent solved: {round(100 * self.problems_solved[operation] / self.questions_attempted[operation])}%")
-                print(f"\tAverage time per problem: {round(self.answer_time_totals[operation] / self.questions_attempted[operation], 2)} seconds")
+            for operation in self.operations:
+                if self.questions_attempted[operation] > 0:
+                    print(f"\n{operation.title()}:")
+                    print("---------")
+                    print(f"\tSolved: {self.problems_solved[operation]}")
+                    print(f"\tAttempted: {self.questions_attempted[operation]}")
+                    print(f"\tPercent solved: {round(100 * self.problems_solved[operation] / self.questions_attempted[operation])}%")
+                    print(f"\tAverage time per problem: {round(self.answer_time_totals[operation] / self.questions_attempted[operation], 2)} seconds")
+        else:
+            print("\nSorry, no stats to show")
         input("Press any key to continue")
 
     def quit_program(self):
@@ -254,38 +262,79 @@ class MathChallenge():
             return 0
         return result
 
-    def select_user(self, msg = None):
+    def select_user(self, msg = None)->User:
         users = usr.get_users()
+        is_hide_test_mode = [False, True][self.args.show_test == 0] #default is 0
         if msg is None:
-            print("Please type the number of your user and press 'Enter'\n")
+            print("\nPlease type the number of your user and press 'Enter'\n")
         else:
             print(msg)
+        if is_hide_test_mode:
+            users = users[:-1] # TODO - this is not robust. Fix
         for user in users:
             user.display_user()
         choice = input('\n')
         user_index = self.convert_string_int(choice)
-        if user_index is not None:
-            try:
-                user = users[user_index - 1]
-            except:
-                self.select_user("Sorry, that doesn't seem to be a valid choice. Please try again")
+        if user_index is not None and user_index >= 1 and user_index <= len(users):
+            user = users[user_index - 1]
+            # try:
+            # except:
+            #     self.select_user("Sorry, that doesn't seem to be a valid choice. Please try again")
         else:
+            os.system('clear')
             self.select_user("Sorry, that doesn't seem to be a valid choice. Please try again")
         return user
+    
+    def reset_database(self):
+        if input("\nThis will reset the database - all saved data will be lost\npress 'y' to proceed, any other key to return to the config menu") == 'y':
+            reset_database()
+        else:
+            pass
+
+    def add_user(self):
+        print("\nHello from add_user. This functionality has not been implemented yet.")
+        input("Press any key to continue")
+
+    def remove_user(self):
+        print("\nHello from remove_user. This functionality has not been implemented yet.")
+        input("Press any key to continue")
+
+    def show_config_screen(self):
+        os.system('clear')
+        print("\nConfig Options")
+        choice = input('''
+        1 - Reset Database
+        2 - Add User
+        3 - Remove User
+        4 - Math Challenge
+        5 - Quit
+        ''')
+        selected = self.convert_string_int(choice)
+        if selected is None or selected < 1 or selected > 5:
+            input("Please choose an integer between 1 and 4.\nPress any key to continue\n")
+            self.show_config_screen()
+        elif selected < 4 and selected >= 1:
+            operation = {1:self.reset_database, 2:self.add_user, 3:self.remove_user}[selected]
+            operation()
+            self.show_config_screen()
+        elif selected == 4:
+            self.args.config = 0
+            os.system('clear')
+            return
+        elif selected == 5:
+            self.quit_program()
 
     def setup(self):
-        """set up application
-        
-        Args:
-            name (string): player name
-        """ 
+        """set up application""" 
         os.system('clear') 
+        if self.args.config:
+            self.show_config_screen()
         self.solved = []
         self.problem_set = None 
         if self.user is None:
             self.user = self.select_user()
         if self.first_run:
-            self.print_intro_screen(self.user)
+            self.show_intro_screen(self.user)
             self.first_run = False  
         print("\nWhat would you like to practice?")
         choice = input('''
@@ -325,9 +374,9 @@ class MathChallenge():
         return
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("name", type=str, nargs = '?', default="Anonymous Doo-Doo Head")
-    # args = parser.parse_args()
-    # player_name = args.name
-    game = MathChallenge()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--show_test", nargs='?', type=int, default=0)
+    parser.add_argument("-c","--config", nargs='?', type=int, default=0)
+    args = parser.parse_args()
+    game = MathChallenge(args)
     game.setup()

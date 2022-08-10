@@ -35,51 +35,52 @@ def generate_all_data(mn=2, mx=100):
         result.append(tmp)
     return result
 
-# open connection
-con =sqlite3.connect('math_challenge.db')
-cur = con.cursor()
+def reset_database():
+    # open connection
+    con =sqlite3.connect('math_challenge.db')
+    cur = con.cursor()
 
-# Drop tables if they exist
-cur.execute('''DROP TABLE IF EXISTS users''')
-cur.execute('''DROP TABLE IF EXISTS stats''')
-cur.execute('''DROP TABLE IF EXISTS arithmetic_problems''')
+    # Drop tables if they exist
+    cur.execute('''DROP TABLE IF EXISTS users''')
+    cur.execute('''DROP TABLE IF EXISTS stats''')
+    cur.execute('''DROP TABLE IF EXISTS arithmetic_problems''')
 
-# create and load users table
-cur.execute('''CREATE TABLE users 
-            (
-                id INTEGER PRIMARY KEY NOT NULL,
-                user_name TEXT NOT NULL
-            );''') 
-cur.executemany('''INSERT INTO users (user_name) VALUES(?)''', [('lars',), ('lena',),('lucy',),('test_user',)])
-con.commit()
+    # create and load users table
+    cur.execute('''CREATE TABLE users 
+                (
+                    id INTEGER PRIMARY KEY NOT NULL,
+                    user_name TEXT NOT NULL
+                );''') 
+    cur.executemany('''INSERT INTO users (user_name) VALUES(?)''', [('lars',), ('lena',),('lucy',),('test_user',)])
+    con.commit()
 
-# create and load arithmetic_problems table
-cur.execute('''CREATE TABLE arithmetic_problems 
-            (
-                id INTEGER PRIMARY KEY NOT NULL,
-                operation TEXT NOT NULL,
-                operand1 INTEGER NOT NULL,
-                operand2 INTEGER NOT NULL,
-                answer INTEGER NOT NULL
-            );''')
-cur.execute('''CREATE UNIQUE INDEX IDX_Arithmetic_Probems ON arithmetic_problems (operation, operand1, operand2, answer)''') 
+    # create and load arithmetic_problems table
+    cur.execute('''CREATE TABLE arithmetic_problems 
+                (
+                    id INTEGER PRIMARY KEY NOT NULL,
+                    operation TEXT NOT NULL,
+                    operand1 INTEGER NOT NULL,
+                    operand2 INTEGER NOT NULL,
+                    answer INTEGER NOT NULL
+                );''')
+    cur.execute('''CREATE UNIQUE INDEX IDX_Arithmetic_Probems ON arithmetic_problems (operation, operand1, operand2, answer)''') 
 
-data_to_db = generate_all_data()
-cur.executemany("INSERT INTO arithmetic_problems (operation,operand1,operand2,answer) VALUES (?, ?, ?, ?);", data_to_db)
-con.commit()
+    data_to_db = generate_all_data()
+    cur.executemany("INSERT INTO arithmetic_problems (operation,operand1,operand2,answer) VALUES (?, ?, ?, ?);", data_to_db)
+    con.commit()
 
-# create stats table
-cur.execute('''CREATE TABLE stats 
-            (
-                id INTEGER PRIMARY KEY NOT NULL,
-                user_id INTEGER NOT NULL,
-                question_id INTEGER NOT NULL,
-                answer_time REAL NOT NULL,
-                user_answer INTEGER NOT NULL,
-                is_correct_ans TEXT NOT NULL,
-                date TEXT NOT NULL,
-                FOREIGN KEY(question_id) REFERENCES arithmetic_problems(id)
-            );''') 
-con.commit()
-con.close()
+    # create stats table
+    cur.execute('''CREATE TABLE stats 
+                (
+                    id INTEGER PRIMARY KEY NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    question_id INTEGER NOT NULL,
+                    answer_time REAL NOT NULL,
+                    user_answer INTEGER NOT NULL,
+                    is_correct_ans TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    FOREIGN KEY(question_id) REFERENCES arithmetic_problems(id)
+                );''') 
+    con.commit()
+    con.close()
 
